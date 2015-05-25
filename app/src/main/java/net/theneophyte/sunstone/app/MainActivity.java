@@ -13,6 +13,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
+import android.widget.SeekBar;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
@@ -23,6 +24,7 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback, 
 
     private Button mSyncTime;
     private Button mSetAlarm;
+    private SeekBar mBrightness;
 
     private BluetoothLeUart mUart;
     private TimePickerFragment mAlarmPicker;
@@ -56,6 +58,24 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback, 
 
         mSetAlarm.setClickable(false);
         mSetAlarm.setEnabled(false);
+
+        mBrightness = (SeekBar) findViewById(R.id.brightness_bar);
+        mBrightness.setMax(0xFF);
+        mBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser){
+                if (fromUser){
+                    setBrightness(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar){
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar){
+
+            }
+        });
 
         mUart.connectFirstAvailable();
     }
@@ -158,6 +178,10 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback, 
     @Override
     public void onDeviceInfoAvailable() {
 
+    }
+
+    private final void setBrightness(int level){
+        mUart.send(String.format("B%03d", level % 0xFF));
     }
 
     private final void syncTime() {

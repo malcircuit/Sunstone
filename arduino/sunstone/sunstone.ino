@@ -27,6 +27,7 @@ All text above, and the splash screen below must be included in any redistributi
 
 #define TIME_SYNC 'S'
 #define SET_ALARM 'A'
+#define SET_BRIGHTNESS 'B'
 #define YEAR_MSB 1
 #define YEAR_LSB 2
 #define MONTH 3
@@ -41,6 +42,7 @@ Adafruit_BLE_UART uart = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADA
 
 uint8_t clock_hour = 0, clock_minute = 0, clock_second = 0;
 uint8_t alarm_hour = 0, alarm_minute = 0, alarm_second = 0;
+uint8_t brightness = 0xFF;
 unsigned long old_millis = 0, new_millis = 0, clock_millis = 0;
 
 bool is_clock_set = false, is_alarm_set = false, clock_on = false, alarm_on = false, alarm_active = false;
@@ -111,7 +113,7 @@ void rxCallback(uint8_t *buffer, uint8_t len)
 			sprintf(message, "\nTime has been updated to %02d:%02d:%02d.\n", clock_hour, clock_minute, clock_second);
 			Serial.print(message);
 			
-			update_clock_display(clock_hour, clock_minute);
+			//update_clock_display(clock_hour, clock_minute);
 			is_clock_set = true;
 			break;
 		case SET_ALARM:
@@ -122,10 +124,18 @@ void rxCallback(uint8_t *buffer, uint8_t len)
 			sprintf(message, "\nAlarm has been set to %02d:%02d:%02d.\n", alarm_hour, alarm_minute, alarm_second);
 			Serial.print(message);
 		
-			update_alarm_display(alarm_hour, alarm_minute);
+			//update_alarm_display(alarm_hour, alarm_minute);
 			is_alarm_set = true;
 			PORTD |= 0x08;
 			break;
+		case SET_BRIGHTNESS:
+		    brightness = (buffer[1]- ASCII_ZERO) * 100 + (buffer[2] - ASCII_ZERO) * 10 + (buffer[3] - ASCII_ZERO);
+
+            OCR0A = brightness;
+
+		    sprintf(message, "\nBrightness has been set to %d.\n", brightness);
+            Serial.print(message);
+            break;
 	}
 }
 
@@ -136,10 +146,18 @@ void rxCallback(uint8_t *buffer, uint8_t len)
 /**************************************************************************/
 void setup(void)
 { 
-	DDRD |= 0x08;
-	PORTD |= 0x08;
-	update_clock_display(0, 0);
-	update_alarm_display(0, 0);
+	//DDRD |= 0x08;
+	//PORTD |= 0x08;
+
+	TCCR0A |= 0x83;
+        TCCR0A &= 0xBF;
+	TCCR0B |= 0x02;
+	TCCR0B &= 0xFA;
+
+	OCR0A = 0xFF;
+
+	//update_clock_display(0, 0);
+	//update_alarm_display(0, 0);
 	
 	Serial.begin(9600);
 	while(!Serial); // Leonardo/Micro should wait for serial init
@@ -150,7 +168,7 @@ void setup(void)
 	// uart.setDeviceName("NEWNAME"); /* 7 characters max! */
 	uart.begin();
 
-	time_display.turn_on();
+	//time_display.turn_on();
 }
 
 /**************************************************************************/
@@ -165,7 +183,7 @@ void loop()
 	
 	uart.pollACI();
 	
-	new_millis = millis();
+	/**new_millis = millis();
 	delta_millis = new_millis - old_millis;
 
 
@@ -214,7 +232,7 @@ void loop()
 		}
 		
 		old_millis = new_millis;
-	}
+	}**/
 }
 
 void update_clock_display(uint8_t hours, uint8_t minutes)
