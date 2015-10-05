@@ -103,7 +103,7 @@ import java.util.UUID;
 /**
  * AlarmClock application.
  */
-public class AlarmClockFragment extends DeskClockFragment implements
+public class AlarmClockFragment extends Fragment implements
         LoaderManager.LoaderCallbacks<Cursor>, OnTimeSetListener, View.OnTouchListener {
     private static final float EXPAND_DECELERATION = 1f;
     private static final float COLLAPSE_DECELERATION = 0.7f;
@@ -124,8 +124,6 @@ public class AlarmClockFragment extends DeskClockFragment implements
     private static final String KEY_UNDO_SHOWING = "undoShowing";
     private static final String KEY_PREVIOUS_DAY_MAP = "previousDayMap";
     private static final String KEY_SELECTED_ALARM = "selectedAlarm";
-    private static final DeskClockExtensions sDeskClockExtensions = ExtensionsFactory
-            .getDeskClockExtensions();
     private static final String KEY_DELETE_CONFIRMATION = "deleteConfirmation";
     private static final String KEY_SELECT_SOURCE = "selectedSource";
 
@@ -136,11 +134,11 @@ public class AlarmClockFragment extends DeskClockFragment implements
 
     // This extra is used when receiving an intent to create an alarm, but no alarm details
     // have been passed in, so the alarm page should start the process of creating a new alarm.
-    public static final String ALARM_CREATE_NEW_INTENT_EXTRA = "deskclock.create.new";
+    public static final String ALARM_CREATE_NEW_INTENT_EXTRA = "sunstone.create.new";
 
     // This extra is used when receiving an intent to scroll to specific alarm. If alarm
     // can not be found, and toast message will pop up that the alarm has be deleted.
-    public static final String SCROLL_TO_ALARM_INTENT_EXTRA = "deskclock.scroll.to.alarm";
+    public static final String SCROLL_TO_ALARM_INTENT_EXTRA = "sunstone.scroll.to.alarm";
 
     private FrameLayout mMainLayout;
 
@@ -152,7 +150,6 @@ public class AlarmClockFragment extends DeskClockFragment implements
     private ListView mAlarmsList;
     private AlarmItemAdapter mAdapter;
     private View mEmptyView;
-    private View mFooterView;
 
     private String mDisplayName;
 
@@ -237,7 +234,7 @@ public class AlarmClockFragment extends DeskClockFragment implements
                 menuButton.setVisibility(View.GONE);
             } else {
                 menuButton.setVisibility(View.VISIBLE);
-                setupFakeOverflowMenuButton(menuButton);
+                //setupFakeOverflowMenuButton(menuButton);
             }
         }
 
@@ -249,9 +246,6 @@ public class AlarmClockFragment extends DeskClockFragment implements
         mUndoBar = (ActionableToastBar) v.findViewById(R.id.undo_bar);
         mUndoFrame = v.findViewById(R.id.undo_frame);
         mUndoFrame.setOnTouchListener(this);
-
-        mFooterView = v.findViewById(R.id.alarms_footer_view);
-        mFooterView.setOnTouchListener(this);
 
         mAdapter = new AlarmItemAdapter(getActivity(),
                 expandedId, repeatCheckedIds, selectedAlarms, previousDayMap, mAlarmsList);
@@ -307,11 +301,11 @@ public class AlarmClockFragment extends DeskClockFragment implements
     public void onResume() {
         super.onResume();
 
-        final DeskClock activity = (DeskClock) getActivity();
-        if (activity.getSelectedTab() == DeskClock.ALARM_TAB_INDEX) {
-            setFabAppearance();
-            setLeftRightButtonAppearance();
-        }
+//        final DeskClock activity = (DeskClock) getActivity();
+//        if (activity.getSelectedTab() == DeskClock.ALARM_TAB_INDEX) {
+//            setFabAppearance();
+//            setLeftRightButtonAppearance();
+//        }
 
         if (mAdapter != null) {
             mAdapter.notifyDataSetChanged();
@@ -1673,8 +1667,6 @@ public class AlarmClockFragment extends DeskClockFragment implements
                     ContentResolver cr = context.getContentResolver();
                     AlarmStateManager.deleteAllInstances(context, alarm.id);
                     Alarm.deleteAlarm(cr, alarm.id);
-                    sDeskClockExtensions.deleteAlarm(
-                            AlarmClockFragment.this.getActivity().getApplicationContext(), alarm.id);
                 }
                 return null;
             }
@@ -1698,9 +1690,6 @@ public class AlarmClockFragment extends DeskClockFragment implements
 
                             // Create and add instance to db
                             if (newAlarm.enabled) {
-                                sDeskClockExtensions.addAlarm(
-                                        AlarmClockFragment.this.getActivity().getApplicationContext(),
-                                        newAlarm);
                                 return setupAlarmInstance(context, newAlarm);
                             }
                         }
@@ -1765,31 +1754,30 @@ public class AlarmClockFragment extends DeskClockFragment implements
         return false;
     }
 
-    @Override
-    public void onFabClick(View view){
-        hideUndoBar(true, null);
-        startCreatingAlarm();
-    }
-
-    @Override
-    public void setFabAppearance() {
-        final DeskClock activity = (DeskClock) getActivity();
-        if (mFab == null || activity.getSelectedTab() != DeskClock.ALARM_TAB_INDEX) {
-            return;
-        }
-        mFab.setVisibility(View.VISIBLE);
-        mFab.setImageResource(R.drawable.ic_fab_plus);
-        mFab.setContentDescription(getString(R.string.button_alarms));
-    }
-
-    @Override
-    public void setLeftRightButtonAppearance() {
-        final DeskClock activity = (DeskClock) getActivity();
-        if (mLeftButton == null || mRightButton == null ||
-                activity.getSelectedTab() != DeskClock.ALARM_TAB_INDEX) {
-            return;
-        }
-        mLeftButton.setVisibility(View.INVISIBLE);
-        mRightButton.setVisibility(View.INVISIBLE);
-    }
+//    @Override
+//    public void onFabClick(View view){
+//        hideUndoBar(true, null);
+//        startCreatingAlarm();
+//    }
+//
+//    @Override
+//    public void setFabAppearance() {
+//        //final DeskClock activity = (DeskClock) getActivity();
+//        if (mFab == null){// || activity.getSelectedTab() != DeskClock.ALARM_TAB_INDEX) {
+//            return;
+//        }
+//        mFab.setVisibility(View.VISIBLE);
+//        mFab.setImageResource(R.drawable.ic_fab_plus);
+//        mFab.setContentDescription(getString(R.string.button_alarms));
+//    }
+//
+//    @Override
+//    public void setLeftRightButtonAppearance() {
+//        //final DeskClock activity = (DeskClock) getActivity();
+//        if (mLeftButton == null || mRightButton == null){// || activity.getSelectedTab() != DeskClock.ALARM_TAB_INDEX) {
+//            return;
+//        }
+//        mLeftButton.setVisibility(View.INVISIBLE);
+//        mRightButton.setVisibility(View.INVISIBLE);
+//    }
 }

@@ -90,9 +90,9 @@ public class DeskClock extends Activity implements LabelDialogFragment.TimerLabe
     private boolean mIsFirstLaunch = true;
     private ActionBar mActionBar;
     private Tab mAlarmTab;
-    private Tab mClockTab;
-    private Tab mTimerTab;
-    private Tab mStopwatchTab;
+//    private Tab mClockTab;
+//    private Tab mTimerTab;
+//    private Tab mStopwatchTab;
     private Menu mMenu;
     private ViewPager mViewPager;
     private TabsAdapter mTabsAdapter;
@@ -218,20 +218,20 @@ public class DeskClock extends Activity implements LabelDialogFragment.TimerLabe
             mAlarmTab.setContentDescription(R.string.menu_alarm);
             mTabsAdapter.addTab(mAlarmTab, AlarmClockFragment.class, ALARM_TAB_INDEX);
 
-            mClockTab = mActionBar.newTab();
-            mClockTab.setIcon(R.drawable.clock_tab);
-            mClockTab.setContentDescription(R.string.menu_clock);
-            mTabsAdapter.addTab(mClockTab, ClockFragment.class, CLOCK_TAB_INDEX);
-
-            mTimerTab = mActionBar.newTab();
-            mTimerTab.setIcon(R.drawable.timer_tab);
-            mTimerTab.setContentDescription(R.string.menu_timer);
-            mTabsAdapter.addTab(mTimerTab, TimerFragment.class, TIMER_TAB_INDEX);
-
-            mStopwatchTab = mActionBar.newTab();
-            mStopwatchTab.setIcon(R.drawable.stopwatch_tab);
-            mStopwatchTab.setContentDescription(R.string.menu_stopwatch);
-            mTabsAdapter.addTab(mStopwatchTab, StopwatchFragment.class, STOPWATCH_TAB_INDEX);
+//            mClockTab = mActionBar.newTab();
+//            mClockTab.setIcon(R.drawable.clock_tab);
+//            mClockTab.setContentDescription(R.string.menu_clock);
+//            mTabsAdapter.addTab(mClockTab, ClockFragment.class, CLOCK_TAB_INDEX);
+//
+//            mTimerTab = mActionBar.newTab();
+//            mTimerTab.setIcon(R.drawable.timer_tab);
+//            mTimerTab.setContentDescription(R.string.menu_timer);
+//            mTabsAdapter.addTab(mTimerTab, TimerFragment.class, TIMER_TAB_INDEX);
+//
+//            mStopwatchTab = mActionBar.newTab();
+//            mStopwatchTab.setIcon(R.drawable.stopwatch_tab);
+//            mStopwatchTab.setContentDescription(R.string.menu_stopwatch);
+//            mTabsAdapter.addTab(mStopwatchTab, StopwatchFragment.class, STOPWATCH_TAB_INDEX);
 
             mActionBar.setSelectedNavigationItem(selectedIndex);
             mTabsAdapter.notifySelectedPage(selectedIndex);
