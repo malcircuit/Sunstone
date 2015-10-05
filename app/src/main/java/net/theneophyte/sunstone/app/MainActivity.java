@@ -1,13 +1,12 @@
 package net.theneophyte.sunstone.app;
 
 import android.app.Activity;
-import android.app.Dialog;
-import android.app.DialogFragment;
 import android.app.TimePickerDialog;
-import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGattCharacteristic;
+import android.content.pm.PackageManager;
+import android.os.AsyncTask;
 import android.os.Bundle;
-import android.text.format.DateFormat;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -17,69 +16,294 @@ import android.widget.SeekBar;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
-import java.util.Calendar;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 
-public class MainActivity extends Activity implements BluetoothLeUart.Callback, TimePickerDialog.OnTimeSetListener {
+public class MainActivity extends Activity implements BleSunstone.Callback, TimePickerDialog.OnTimeSetListener {
 
-    private Button mSyncTime;
-    private Button mSetAlarm;
-    private SeekBar mBrightness;
+    private final static String TAG = "Sunstone";
 
-    private BluetoothLeUart mUart;
-    private TimePickerFragment mAlarmPicker;
+    private SeekBar mRedSeekBar,
+            mGreenSeekBar,
+            mBlueSeekBar,
+            mWarmSeekBar,
+            mCoolSeekBar,
+            mWhiteSeekBar,
+            mColorSeekBar;
+
+    private Button mColorDemoButton, mSunriseDemoButton;
+    private Handler mHandler;
+
+    private BleSunstone mSunstone;
+
+    private int white, color, warm, cool, red, green, blue;
+
+    private volatile boolean colorDemo = false, redFlag = false, greenFlag = false, blueFlag = false;
+
+    private ColorDemoTask mColorDemoTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // Use this check to determine whether BLE is supported on the device. Then
+        // you can selectively disable BLE-related features.
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)) {
+            Toast.makeText(this, R.string.ble_not_supported, Toast.LENGTH_SHORT).show();
+            finish();
+        }
 
-        mUart = new BluetoothLeUart(getApplicationContext());
+        mHandler = new Handler(Looper.getMainLooper());
+        mSunstone = new BleSunstone(getApplicationContext(), mHandler, this);
+        mColorDemoTask = new ColorDemoTask();
 
-        mSyncTime = (Button) findViewById(R.id.sync_time_button);
-        mSyncTime.setOnClickListener(new View.OnClickListener() {
+        mColorDemoButton = (Button) findViewById(R.id.color_demo_button);
+        mColorDemoButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                syncTime();
+                if (!colorDemo) {
+                    red = mSunstone.getRedValue();
+                    green = mSunstone.getGreenValue();
+                    blue = mSunstone.getBlueValue();
+
+                    mRedSeekBar.setEnabled(false);
+                    mGreenSeekBar.setEnabled(false);
+                    mBlueSeekBar.setEnabled(false);
+
+                    if (mSunriseDemoButton != null) {
+                        mSunriseDemoButton.setEnabled(false);
+                    }
+
+                    colorDemo = true;
+
+                    if (mColorDemoTask.getStatus() == AsyncTask.Status.FINISHED)
+                    {
+                        mColorDemoTask = new ColorDemoTask();
+                    }
+                    mColorDemoTask.execute();
+
+                } else {
+                    mColorDemoTask.cancel(true);
+
+                    setBlue(blue);
+                    setRed(red);
+                    setGreen(green);
+
+                    colorDemo = false;
+                    if (mSunriseDemoButton != null) {
+                        mSunriseDemoButton.setEnabled(true);
+                    }
+                }
             }
         });
 
-        mSyncTime.setClickable(false);
-        mSyncTime.setEnabled(false);
+        mColorDemoButton.setEnabled(true);
 
-        mAlarmPicker = new TimePickerFragment();
-        mAlarmPicker.setListener(this);
-
-        mSetAlarm = (Button) findViewById(R.id.set_alarm_button);
-        mSetAlarm.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                mAlarmPicker.show(getFragmentManager(), "AlarmPicker");
-            }
-        });
-
-        mSetAlarm.setClickable(false);
-        mSetAlarm.setEnabled(false);
-
-        mBrightness = (SeekBar) findViewById(R.id.brightness_bar);
-        mBrightness.setMax(0xFF);
-        mBrightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser){
-                if (fromUser){
-                    setBrightness(progress);
+        mBlueSeekBar = (SeekBar) findViewById(R.id.blue_bar);
+        mBlueSeekBar.setMax(0xFF);
+        mBlueSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setBlue(progress);
                 }
             }
 
-            public void onStartTrackingTouch(SeekBar seekbar){
+            public void onStartTrackingTouch(SeekBar seekbar) {
 
             }
 
-            public void onStopTrackingTouch(SeekBar seekbar){
+            public void onStopTrackingTouch(SeekBar seekbar) {
 
             }
         });
+        mBlueSeekBar.setEnabled(false);
 
-        mUart.connectFirstAvailable();
+        mRedSeekBar = (SeekBar) findViewById(R.id.red_bar);
+        mRedSeekBar.setMax(0xFF);
+        mRedSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setRed(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mRedSeekBar.setEnabled(false);
+
+        mGreenSeekBar = (SeekBar) findViewById(R.id.green_bar);
+        mGreenSeekBar.setMax(0xFF);
+        mGreenSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setGreen(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mGreenSeekBar.setEnabled(false);
+
+        mWarmSeekBar = (SeekBar) findViewById(R.id.warm_bar);
+        mWarmSeekBar.setMax(0xFF);
+        mWarmSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setWarm(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mWarmSeekBar.setEnabled(false);
+
+        mCoolSeekBar = (SeekBar) findViewById(R.id.cool_bar);
+        mCoolSeekBar.setMax(0xFF);
+        mCoolSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setCool(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mCoolSeekBar.setEnabled(false);
+
+        mWhiteSeekBar = (SeekBar) findViewById(R.id.white_bar);
+        mWhiteSeekBar.setMax(0xFF);
+        mWhiteSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setWhiteBrightness(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mWhiteSeekBar.setEnabled(false);
+
+        mColorSeekBar = (SeekBar) findViewById(R.id.color_bar);
+        mColorSeekBar.setMax(0xFF);
+        mColorSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+                if (fromUser) {
+                    setColorBrightness(progress);
+                }
+            }
+
+            public void onStartTrackingTouch(SeekBar seekbar) {
+
+            }
+
+            public void onStopTrackingTouch(SeekBar seekbar) {
+
+            }
+        });
+        mColorSeekBar.setEnabled(false);
+
+//        mColorSeekBar = setupSeekbar(R.id.color_bar, "setColorBrightness", this);
+
+        mSunstone.connect();
     }
 
+//    private SeekBar setupSeekbar(int id, final String progChangeFunc, final Object caller){
+//        final Method progChangedCallback;
+//
+//        try {
+//            progChangedCallback = caller.getClass().getMethod(progChangeFunc, Integer.class);
+//        } catch (NoSuchMethodException e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//
+//        final SeekBar seekBar = (SeekBar) findViewById(id);
+//        seekBar.setMax(0xFF);
+//        seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+//            public void onProgressChanged(SeekBar seekbar, int progress, boolean fromUser) {
+//                if (fromUser) {
+//                    try {
+//                        if (mSunstone != null)
+//                            progChangedCallback.invoke(caller, progress);
+//
+//                    } catch (IllegalAccessException iaex){
+//                        Log.d(TAG, "Access Denied: " + progChangedCallback.toGenericString(), iaex);
+//                    } catch (InvocationTargetException itx){
+//                        Log.d(TAG, "Invoked method threw an exception: " + progChangedCallback.toGenericString(), itx);
+//                    }
+//                }
+//            }
+//
+//            public void onStartTrackingTouch(SeekBar seekbar) {
+//
+//            }
+//
+//            public void onStopTrackingTouch(SeekBar seekbar) {
+//
+//            }
+//        });
+//        seekBar.setEnabled(false);
+//
+//        return seekBar;
+//    }
+
+    private void setRed(int value){
+        mSunstone.setRedValue(value);
+    }
+
+    private void setGreen(int value){
+        mSunstone.setGreenValue(value);
+    }
+
+    private void setBlue(int value){
+        mSunstone.setBlueValue(value);
+    }
+
+    private void setWarm(int value){
+        mSunstone.setWarmValue(value);
+    }
+
+    private void setCool(int value){
+        mSunstone.setCoolValue(value);
+    }
+
+    private void setColorBrightness(int value){
+        mSunstone.setColorBrightness(value);
+    }
+
+    private void setWhiteBrightness(int value){
+        mSunstone.setWhiteBrightness(value);
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -102,125 +326,317 @@ public class MainActivity extends Activity implements BluetoothLeUart.Callback, 
 
         return super.onOptionsItemSelected(item);
     }
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
 
     @Override
     protected void onResume() {
         super.onResume();
-        mUart.registerCallback(this);
-//        mUart.connectFirstAvailable();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        mSunstone.connect();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        mUart.unregisterCallback(this);
-        mUart.disconnect();
+        mSunstone.disconnect();
+        mColorDemoTask.cancel(true);
     }
 
     @Override
-    public void onConnected(BluetoothLeUart uart) {
-        Log.i("BleUart", "Device connected.");
+    protected void onDestroy(){
+        super.onDestroy();
+    }
+
+    @Override
+    public void onConnected() {
+        Log.i("Sunstone", "Device connected.");
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), "Clock connected!", Toast.LENGTH_SHORT).show();
-                mSyncTime = (Button) findViewById(R.id.sync_time_button);
-                mSyncTime.setClickable(true);
-                mSyncTime.setEnabled(true);
-                mSetAlarm = (Button) findViewById(R.id.set_alarm_button);
-                mSetAlarm.setClickable(true);
-                mSetAlarm.setEnabled(true);
+                Toast.makeText(getApplicationContext(), "Sunstone connected!", Toast.LENGTH_SHORT).show();
+                mSunstone.readRedValue();
+                mSunstone.readGreenValue();
+                mSunstone.readBlueValue();
+                mSunstone.readWarmValue();
+                mSunstone.readCoolValue();
+                mSunstone.readColorBrightness();
+                mSunstone.readWhiteBrightness();
             }
         });
     }
 
     @Override
-    public void onConnectFailed(BluetoothLeUart uart) {
+    public void onConnectFailed() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), "Clock connection failed!", Toast.LENGTH_SHORT).show();
-                mSyncTime = (Button) findViewById(R.id.sync_time_button);
-                mSyncTime.setClickable(false);
-                mSyncTime.setEnabled(false);
-                mSetAlarm = (Button) findViewById(R.id.set_alarm_button);
-                mSetAlarm.setClickable(false);
-                mSetAlarm.setEnabled(false);
+                Toast.makeText(getApplicationContext(), "Sunstone connection failed!", Toast.LENGTH_SHORT).show();
+
+                enableView(mColorSeekBar, false);
+                enableView(mWhiteSeekBar, false);
+                enableView(mWarmSeekBar, false);
+                enableView(mCoolSeekBar, false);
+                enableView(mRedSeekBar, false);
+                enableView(mGreenSeekBar, false);
+                enableView(mBlueSeekBar, false);
+//                enableView(mColorDemoButton, false);
+//                enableView(mSunriseDemoButton, false);
             }
         });
     }
 
     @Override
-    public void onDisconnected(BluetoothLeUart uart) {
+    public void onDisconnected() {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Toast.makeText(getApplicationContext(), "Clock disconnected", Toast.LENGTH_SHORT).show();
-                mSyncTime = (Button) findViewById(R.id.sync_time_button);
-                mSyncTime.setClickable(false);
-                mSyncTime.setEnabled(false);
-                mSetAlarm.setClickable(false);
-                mSetAlarm.setEnabled(false);
+                Toast.makeText(getApplicationContext(), "Sunstone disconnected", Toast.LENGTH_SHORT).show();
+
+                enableView(mColorSeekBar, false);
+                enableView(mWhiteSeekBar, false);
+                enableView(mWarmSeekBar, false);
+                enableView(mCoolSeekBar, false);
+                enableView(mRedSeekBar, false);
+                enableView(mGreenSeekBar, false);
+                enableView(mBlueSeekBar, false);
+//                enableView(mColorDemoButton, false);
+//                enableView(mSunriseDemoButton, false);
             }
         });
     }
 
     @Override
-    public void onReceive(BluetoothLeUart uart, BluetoothGattCharacteristic rx) {
+    public void onConnectionTimeout() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(getApplicationContext(), "No Sunstone found", Toast.LENGTH_SHORT).show();
 
+                enableView(mColorSeekBar, false);
+                enableView(mWhiteSeekBar, false);
+                enableView(mWarmSeekBar, false);
+                enableView(mCoolSeekBar, false);
+                enableView(mRedSeekBar, false);
+                enableView(mGreenSeekBar, false);
+                enableView(mBlueSeekBar, false);
+//                enableView(mColorDemoButton, false);
+//                enableView(mSunriseDemoButton, false);
+            }
+        });
+    }
+
+    private void enableView(View view, boolean enable){
+        if (view != null && (view.isEnabled() != enable))
+            view.setEnabled(enable);
     }
 
     @Override
-    public void onDeviceFound(BluetoothDevice device) {
-        Log.i("BleUart", "Device Found: " + device.getAddress());
+    public void onWhiteBrightnessChange(final int brightness){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mWhiteSeekBar != null){
+                    mWhiteSeekBar.setProgress(brightness & 0xFF);
+
+                    if (!mWhiteSeekBar.isEnabled()){
+                        mWhiteSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
+    }
+
+
+    @Override
+    public void onColorBrightnessChange(final int brightness){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mColorSeekBar != null){
+                    mColorSeekBar.setProgress(brightness & 0xFF);
+
+                    if (!mColorSeekBar.isEnabled()){
+                        mColorSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
 
     @Override
-    public void onDeviceInfoAvailable() {
+    public void onWarmChange(final int warmValue){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mWarmSeekBar != null){
+                    mWarmSeekBar.setProgress(warmValue & 0xFF);
 
+                    if (!mWarmSeekBar.isEnabled()){
+                        mWarmSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
 
-    private final void setBrightness(int level){
-        mUart.send(String.format("B%03d", level % 0xFF));
+    @Override
+    public void onCoolChange(final int coolValue){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mCoolSeekBar != null){
+                    mCoolSeekBar.setProgress(coolValue & 0xFF);
+
+                    if (!mCoolSeekBar.isEnabled()){
+                        mCoolSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
 
-    private final void syncTime() {
-        final int hours, minutes, seconds;
-        final Calendar cal = Calendar.getInstance();
-        hours = cal.get(Calendar.HOUR_OF_DAY);
-        minutes = cal.get(Calendar.MINUTE);
-        seconds = cal.get(Calendar.SECOND);
-        Toast.makeText(getApplicationContext(), String.format("Time set to %02d:%02d:%02d.", hours, minutes, seconds), Toast.LENGTH_SHORT).show();
-        mUart.send(String.format("S%02d%02d%02d", hours, minutes, seconds));
+    @Override
+    public void onRedChange(final int redValue){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mRedSeekBar != null) {
+                    mRedSeekBar.setProgress(redValue & 0xFF);
+
+                    if (colorDemo) {
+                        redFlag = true;
+                    } else if (!mRedSeekBar.isEnabled()) {
+                        mRedSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
 
-    private final void setAlarm(int hours, int minutes) {
-        Toast.makeText(getApplicationContext(), String.format("Alarm set to %02d:%02d:00.", hours, minutes), Toast.LENGTH_SHORT).show();
-        mUart.send(String.format("A%02d%02d00", hours, minutes));
+    @Override
+    public void onGreenChange(final int greenValue){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mGreenSeekBar != null) {
+                    mGreenSeekBar.setProgress(greenValue & 0xFF);
+
+                    if (colorDemo) {
+                        greenFlag = true;
+                    } else if (!mGreenSeekBar.isEnabled()) {
+                        mGreenSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
 
-    public static class TimePickerFragment extends DialogFragment {
+    @Override
+    public void onBlueChange(final int blueValue){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if (mBlueSeekBar != null) {
+                    mBlueSeekBar.setProgress(blueValue & 0xFF);
 
-        private TimePickerDialog.OnTimeSetListener mListener;
-
-        public void setListener(TimePickerDialog.OnTimeSetListener listener) {
-            mListener = listener;
-        }
-
-        @Override
-        public Dialog onCreateDialog(Bundle savedInstanceState) {
-            // Use the current time as the default values for the picker
-            final Calendar c = Calendar.getInstance();
-            final int hour = c.get(Calendar.HOUR_OF_DAY);
-            final int minute = c.get(Calendar.MINUTE);
-
-            // Create a new instance of TimePickerDialog and return it
-            return new TimePickerDialog(getActivity(), mListener, hour, minute, DateFormat.is24HourFormat(getActivity()));
-        }
+                    if (colorDemo) {
+                        blueFlag = true;
+                    } else if (!mBlueSeekBar.isEnabled()) {
+                        mBlueSeekBar.setEnabled(true);
+                    }
+                }
+            }
+        });
     }
+
+//    public static class TimePickerFragment extends DialogFragment {
+//
+//        private TimePickerDialog.OnTimeSetListener mListener;
+//
+//        public void setListener(TimePickerDialog.OnTimeSetListener listener) {
+//            mListener = listener;
+//        }
+//
+//        @Override
+//        public Dialog onCreateDialog(Bundle savedInstanceState) {
+//            // Use the current time as the default values for the picker
+//            final Calendar c = Calendar.getInstance();
+//            final int hour = c.get(Calendar.HOUR_OF_DAY);
+//            final int minute = c.get(Calendar.MINUTE);
+//
+//            // Create a new instance of TimePickerDialog and return it
+//            return new TimePickerDialog(getActivity(), mListener, hour, minute, DateFormat.is24HourFormat(getActivity()));
+//        }
+//    }
 
 
     public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
-        setAlarm(hourOfDay, minute);
+
+    }
+
+    private class ColorDemoTask extends AsyncTask<Void, Void, Void>{
+
+        private int redValue = 0, greenValue = 0, blueValue = 0xFF;
+
+        public Void doInBackground(Void... voids){
+            long millis;
+            while (!this.isCancelled()){
+                millis = System.currentTimeMillis();
+
+                redFlag = false;
+                setRed(redValue);
+                while (!redFlag){
+                    if (Thread.currentThread().isInterrupted()){
+                        return null;
+                    }
+                }
+
+                if (this.isCancelled()){
+                    return null;
+                }
+
+                greenFlag = false;
+                setGreen(greenValue);
+                while (!greenFlag){
+                    if (Thread.currentThread().isInterrupted()){
+                        return null;
+                    }
+                }
+
+                if (this.isCancelled()){
+                    return null;
+                }
+
+                blueFlag = false;
+                setBlue(blueValue);
+                while (!blueFlag || System.currentTimeMillis() <= (millis + 20)){
+                    if (Thread.currentThread().isInterrupted()){
+                        return null;
+                    }
+                }
+
+                if (redValue != 0 && blueValue == 0){
+                    redValue--;
+                    greenValue++;
+                }
+                else if (greenValue != 0 && redValue == 0){
+                    greenValue--;
+                    blueValue++;
+                }
+                else {
+                    blueValue--;
+                    redValue++;
+                }
+            }
+
+            return null;
+        }
     }
 }

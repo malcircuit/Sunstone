@@ -17,6 +17,7 @@
 <resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
 
     <string name="app_name">Sunstone</string>
+    <string name="ble_not_supported">Bluetooth LE is not supported on this device</string>
 
     <string name="hello_world">Hello world!</string>
     <string name="set_alarm_string">Set Alarm</string>

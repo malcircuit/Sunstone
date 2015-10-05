@@ -19,7 +19,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:paddingTop="?android:attr/actionBarSize" >
+    android:background="@color/default_background">
 
     <ListView
         android:id="@+id/alarms_list"
@@ -61,18 +61,4 @@
             style="@style/ToastBarStyle" />
     </FrameLayout>
 
-    <FrameLayout
-        android:id="@+id/alarms_footer_view"
-        android:layout_width="@dimen/footer_button_size"
-        android:layout_height="@dimen/footer_button_size"
-        android:layout_gravity="bottom|end"
-        android:layout_marginBottom="@dimen/footer_button_layout_margin" >
-        <ImageButton
-            android:id="@+id/menu_button"
-            android:contentDescription="@string/button_menu"
-            style="?android:attr/actionOverflowButtonStyle"
-            android:layout_gravity="end|center_vertical"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-    </FrameLayout>
 </FrameLayout>
