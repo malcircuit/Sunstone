@@ -16,13 +16,11 @@ import android.widget.SeekBar;
 import android.widget.TimePicker;
 import android.widget.Toast;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 
 public class MainActivity extends Activity implements BleSunstone.Callback, TimePickerDialog.OnTimeSetListener {
 
     private final static String TAG = "Sunstone";
+    private final static long WRITE_TIMEOUT_MILLIS = 200;
 
     private SeekBar mRedSeekBar,
             mGreenSeekBar,
@@ -85,11 +83,18 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 } else {
                     mColorDemoTask.cancel(true);
 
-                    setBlue(blue);
-                    setRed(red);
-                    setGreen(green);
+                    new AsyncTask<Void, Void, Void>(){
+                        @Override
+                        protected Void doInBackground(Void... params) {
 
-                    colorDemo = false;
+                            colorDemo = false;
+
+                            setRgb(red, green, blue, 0);
+
+                            return null;
+                        }
+                    }.execute();
+
                     if (mSunriseDemoButton != null) {
                         mSunriseDemoButton.setEnabled(true);
                     }
@@ -305,6 +310,45 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
         mSunstone.setWhiteBrightness(value);
     }
 
+    private boolean setRgb(int redValue, int greenValue, int blueValue, int writePeriod) {
+        final long millis = System.currentTimeMillis();
+        long write_start = System.currentTimeMillis();
+
+        redFlag = false;
+        setRed(redValue);
+        while (!redFlag) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        write_start = System.currentTimeMillis();
+        greenFlag = false;
+        setGreen(greenValue);
+        while (!greenFlag) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        write_start = System.currentTimeMillis();
+        blueFlag = false;
+        setBlue(blueValue);
+        while (!blueFlag || System.currentTimeMillis() <= (millis + writePeriod)) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -510,9 +554,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mRedSeekBar != null) {
                     mRedSeekBar.setProgress(redValue & 0xFF);
 
-                    if (colorDemo) {
-                        redFlag = true;
-                    } else if (!mRedSeekBar.isEnabled()) {
+                    redFlag = true;
+                    if (!colorDemo && !mRedSeekBar.isEnabled()) {
                         mRedSeekBar.setEnabled(true);
                     }
                 }
@@ -528,9 +571,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mGreenSeekBar != null) {
                     mGreenSeekBar.setProgress(greenValue & 0xFF);
 
-                    if (colorDemo) {
-                        greenFlag = true;
-                    } else if (!mGreenSeekBar.isEnabled()) {
+                    greenFlag = true;
+                    if (!colorDemo && !mGreenSeekBar.isEnabled()) {
                         mGreenSeekBar.setEnabled(true);
                     }
                 }
@@ -546,9 +588,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mBlueSeekBar != null) {
                     mBlueSeekBar.setProgress(blueValue & 0xFF);
 
-                    if (colorDemo) {
-                        blueFlag = true;
-                    } else if (!mBlueSeekBar.isEnabled()) {
+                    blueFlag = true;
+                    if (!colorDemo && !mBlueSeekBar.isEnabled()) {
                         mBlueSeekBar.setEnabled(true);
                     }
                 }
@@ -583,59 +624,26 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
 
     private class ColorDemoTask extends AsyncTask<Void, Void, Void>{
 
+        private static final int WRITE_PERIOD = 50;
+
         private int redValue = 0, greenValue = 0, blueValue = 0xFF;
 
         public Void doInBackground(Void... voids){
-            long millis;
-            while (!this.isCancelled()){
-                millis = System.currentTimeMillis();
 
-                redFlag = false;
-                setRed(redValue);
-                while (!redFlag){
-                    if (Thread.currentThread().isInterrupted()){
-                        return null;
-                    }
-                }
+            while (!this.isCancelled()) {
+                setRgb(redValue, greenValue, blueValue, WRITE_PERIOD);
 
-                if (this.isCancelled()){
-                    return null;
-                }
-
-                greenFlag = false;
-                setGreen(greenValue);
-                while (!greenFlag){
-                    if (Thread.currentThread().isInterrupted()){
-                        return null;
-                    }
-                }
-
-                if (this.isCancelled()){
-                    return null;
-                }
-
-                blueFlag = false;
-                setBlue(blueValue);
-                while (!blueFlag || System.currentTimeMillis() <= (millis + 20)){
-                    if (Thread.currentThread().isInterrupted()){
-                        return null;
-                    }
-                }
-
-                if (redValue != 0 && blueValue == 0){
+                if (redValue != 0 && blueValue == 0) {
                     redValue--;
                     greenValue++;
-                }
-                else if (greenValue != 0 && redValue == 0){
+                } else if (greenValue != 0 && redValue == 0) {
                     greenValue--;
                     blueValue++;
-                }
-                else {
+                } else {
                     blueValue--;
                     redValue++;
                 }
             }
-
             return null;
         }
     }
