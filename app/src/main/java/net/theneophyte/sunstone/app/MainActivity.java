@@ -37,9 +37,10 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
 
     private int white, color, warm, cool, red, green, blue;
 
-    private volatile boolean colorDemo = false, redFlag = false, greenFlag = false, blueFlag = false;
+    private volatile boolean colorDemo = false, sunriseDemo = false, writeFlag = false;
 
     private ColorDemoTask mColorDemoTask;
+    private SunriseDemoTask mSunriseDemoTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,6 +56,7 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
         mHandler = new Handler(Looper.getMainLooper());
         mSunstone = new BleSunstone(getApplicationContext(), mHandler, this);
         mColorDemoTask = new ColorDemoTask();
+        mSunriseDemoTask = new SunriseDemoTask();
 
         mColorDemoButton = (Button) findViewById(R.id.color_demo_button);
         mColorDemoButton.setOnClickListener(new View.OnClickListener() {
@@ -64,13 +66,10 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                     green = mSunstone.getGreenValue();
                     blue = mSunstone.getBlueValue();
 
-                    mRedSeekBar.setEnabled(false);
-                    mGreenSeekBar.setEnabled(false);
-                    mBlueSeekBar.setEnabled(false);
-
-                    if (mSunriseDemoButton != null) {
-                        mSunriseDemoButton.setEnabled(false);
-                    }
+                    enableView(mRedSeekBar, false);
+                    enableView(mGreenSeekBar, false);
+                    enableView(mBlueSeekBar, false);
+                    enableView(mSunriseDemoButton, false);
 
                     colorDemo = true;
 
@@ -89,20 +88,70 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
 
                             colorDemo = false;
 
-                            setRgb(red, green, blue, 0);
+                            setRgbBlocking(red, green, blue, 0);
 
                             return null;
                         }
                     }.execute();
 
-                    if (mSunriseDemoButton != null) {
-                        mSunriseDemoButton.setEnabled(true);
-                    }
+                    enableView(mSunriseDemoButton, true);
+
                 }
             }
         });
 
         mColorDemoButton.setEnabled(true);
+
+        mSunriseDemoButton = (Button) findViewById(R.id.sunrise_demo_button);
+        mSunriseDemoButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (!sunriseDemo) {
+                    red = mSunstone.getRedValue();
+                    green = mSunstone.getGreenValue();
+                    blue = mSunstone.getBlueValue();
+                    warm = mSunstone.getWarmValue();
+                    cool = mSunstone.getCoolValue();
+                    color = mSunstone.getColorBrightness();
+                    white = mSunstone.getWhiteBrightness();
+
+                    enableView(mColorSeekBar, false);
+                    enableView(mWhiteSeekBar, false);
+                    enableView(mWarmSeekBar, false);
+                    enableView(mCoolSeekBar, false);
+                    enableView(mRedSeekBar, false);
+                    enableView(mGreenSeekBar, false);
+                    enableView(mBlueSeekBar, false);
+                    enableView(mColorDemoButton, false);
+
+                    sunriseDemo = true;
+
+                    if (mSunriseDemoTask.getStatus() == AsyncTask.Status.FINISHED)
+                    {
+                        mSunriseDemoTask = new SunriseDemoTask();
+                    }
+                    mSunriseDemoTask.execute();
+
+                } else {
+                    mSunriseDemoTask.cancel(true);
+
+                    new AsyncTask<Void, Void, Void>(){
+                        @Override
+                        protected Void doInBackground(Void... params) {
+
+                            sunriseDemo = false;
+
+                            setAllBlocking(red, green, blue, cool, warm, color, white, 0);
+
+                            return null;
+                        }
+                    }.execute();
+
+                    enableView(mColorDemoButton, true);
+                }
+            }
+        });
+
+        mSunriseDemoButton.setEnabled(true);
 
         mBlueSeekBar = (SeekBar) findViewById(R.id.blue_bar);
         mBlueSeekBar.setMax(0xFF);
@@ -282,6 +331,118 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
 //        return seekBar;
 //    }
 
+    private boolean setRedBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setRedValue(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setGreenBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setGreenValue(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setBlueBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setBlueValue(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setWarmBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setWarmValue(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setCoolBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setCoolValue(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setColorBrightnessBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setColorBrightness(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private boolean setWhiteBrightnessBlocking(int value, long wait_time){
+        final long write_start = System.currentTimeMillis();
+
+        writeFlag = false;
+        mSunstone.setWhiteBrightness(value);
+        while (!writeFlag || System.currentTimeMillis() <= wait_time) {
+            if (Thread.currentThread().isInterrupted()) {
+                return false;
+            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void setRed(int value){
         mSunstone.setRedValue(value);
     }
@@ -309,44 +470,28 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
     private void setWhiteBrightness(int value){
         mSunstone.setWhiteBrightness(value);
     }
-
-    private boolean setRgb(int redValue, int greenValue, int blueValue, int writePeriod) {
+    private boolean setRgbBlocking(int redValue, int greenValue, int blueValue, int writePeriod) {
         final long millis = System.currentTimeMillis();
-        long write_start = System.currentTimeMillis();
+        boolean result = false;
 
-        redFlag = false;
-        setRed(redValue);
-        while (!redFlag) {
-            if (Thread.currentThread().isInterrupted()) {
-                return false;
-            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
-                return false;
-            }
-        }
+        result |= setRedBlocking(redValue, 0);
+        result |= setGreenBlocking(greenValue, 0);
+        result |= setBlueBlocking(blueValue, millis + writePeriod);
+        return result;
+    }
 
-        write_start = System.currentTimeMillis();
-        greenFlag = false;
-        setGreen(greenValue);
-        while (!greenFlag) {
-            if (Thread.currentThread().isInterrupted()) {
-                return false;
-            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
-                return false;
-            }
-        }
+    private boolean setAllBlocking(int red, int green, int blue, int cool, int warm, int color, int white, int writePeriod) {
+        final long millis = System.currentTimeMillis();
+        boolean result = false;
 
-        write_start = System.currentTimeMillis();
-        blueFlag = false;
-        setBlue(blueValue);
-        while (!blueFlag || System.currentTimeMillis() <= (millis + writePeriod)) {
-            if (Thread.currentThread().isInterrupted()) {
-                return false;
-            } else if (System.currentTimeMillis() > (write_start + WRITE_TIMEOUT_MILLIS)){
-                return false;
-            }
-        }
-
-        return true;
+        result |= setRedBlocking(red, 0);
+        result |= setGreenBlocking(green, 0);
+        result |= setBlueBlocking(blue, 0);
+        result |= setCoolBlocking(cool, 0);
+        result |= setWarmBlocking(warm, 0);
+        result |= setColorBrightnessBlocking(color, 0);
+        result |= setWhiteBrightnessBlocking(white, millis + writePeriod);
+        return result;
     }
 
     @Override
@@ -430,8 +575,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 enableView(mRedSeekBar, false);
                 enableView(mGreenSeekBar, false);
                 enableView(mBlueSeekBar, false);
-//                enableView(mColorDemoButton, false);
-//                enableView(mSunriseDemoButton, false);
+                enableView(mColorDemoButton, false);
+                enableView(mSunriseDemoButton, false);
             }
         });
     }
@@ -450,8 +595,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 enableView(mRedSeekBar, false);
                 enableView(mGreenSeekBar, false);
                 enableView(mBlueSeekBar, false);
-//                enableView(mColorDemoButton, false);
-//                enableView(mSunriseDemoButton, false);
+                enableView(mColorDemoButton, false);
+                enableView(mSunriseDemoButton, false);
             }
         });
     }
@@ -470,8 +615,8 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 enableView(mRedSeekBar, false);
                 enableView(mGreenSeekBar, false);
                 enableView(mBlueSeekBar, false);
-//                enableView(mColorDemoButton, false);
-//                enableView(mSunriseDemoButton, false);
+                enableView(mColorDemoButton, false);
+                enableView(mSunriseDemoButton, false);
             }
         });
     }
@@ -489,8 +634,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mWhiteSeekBar != null){
                     mWhiteSeekBar.setProgress(brightness & 0xFF);
 
-                    if (!mWhiteSeekBar.isEnabled()){
-                        mWhiteSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!sunriseDemo){
+                        enableView(mWhiteSeekBar, true);
                     }
                 }
             }
@@ -506,8 +652,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mColorSeekBar != null){
                     mColorSeekBar.setProgress(brightness & 0xFF);
 
-                    if (!mColorSeekBar.isEnabled()){
-                        mColorSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!sunriseDemo){
+                        enableView(mColorSeekBar, true);
                     }
                 }
             }
@@ -522,8 +669,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mWarmSeekBar != null){
                     mWarmSeekBar.setProgress(warmValue & 0xFF);
 
-                    if (!mWarmSeekBar.isEnabled()){
-                        mWarmSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!sunriseDemo){
+                        enableView(mWarmSeekBar, true);
                     }
                 }
             }
@@ -538,8 +686,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mCoolSeekBar != null){
                     mCoolSeekBar.setProgress(coolValue & 0xFF);
 
-                    if (!mCoolSeekBar.isEnabled()){
-                        mCoolSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!sunriseDemo){
+                        enableView(mCoolSeekBar, true);
                     }
                 }
             }
@@ -554,9 +703,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mRedSeekBar != null) {
                     mRedSeekBar.setProgress(redValue & 0xFF);
 
-                    redFlag = true;
-                    if (!colorDemo && !mRedSeekBar.isEnabled()) {
-                        mRedSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!colorDemo && !sunriseDemo) {
+                        enableView(mRedSeekBar, true);
                     }
                 }
             }
@@ -571,9 +720,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mGreenSeekBar != null) {
                     mGreenSeekBar.setProgress(greenValue & 0xFF);
 
-                    greenFlag = true;
-                    if (!colorDemo && !mGreenSeekBar.isEnabled()) {
-                        mGreenSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!colorDemo && !sunriseDemo) {
+                        enableView(mGreenSeekBar, true);
                     }
                 }
             }
@@ -588,9 +737,9 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                 if (mBlueSeekBar != null) {
                     mBlueSeekBar.setProgress(blueValue & 0xFF);
 
-                    blueFlag = true;
-                    if (!colorDemo && !mBlueSeekBar.isEnabled()) {
-                        mBlueSeekBar.setEnabled(true);
+                    writeFlag = true;
+                    if (!colorDemo && !sunriseDemo) {
+                        enableView(mBlueSeekBar, true);
                     }
                 }
             }
@@ -628,10 +777,11 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
 
         private int redValue = 0, greenValue = 0, blueValue = 0xFF;
 
+        @Override
         public Void doInBackground(Void... voids){
 
             while (!this.isCancelled()) {
-                setRgb(redValue, greenValue, blueValue, WRITE_PERIOD);
+                setRgbBlocking(redValue, greenValue, blueValue, WRITE_PERIOD);
 
                 if (redValue != 0 && blueValue == 0) {
                     redValue--;
@@ -644,6 +794,47 @@ public class MainActivity extends Activity implements BleSunstone.Callback, Time
                     redValue++;
                 }
             }
+            return null;
+        }
+    }
+
+    private class SunriseDemoTask extends AsyncTask<Void, Void, Void>{
+
+        private static final int GREEN_MAX = 0x50;
+        private static final int GREEN_MIN = 0x10;
+        private static final float GREEN_STEP = (float)(GREEN_MAX - GREEN_MIN) / 0xFF;
+        private static final int WRITE_PERIOD = 40;
+
+        private int redValue = 0xFF, blueValue = 0, warmValue = 0xFF, coolValue = 0;
+        private int colorBrightness = 0, whiteBrightness = 0;
+        private float greenValue = 0x10;
+
+        @Override
+        public Void doInBackground(Void... voids){
+
+            setAllBlocking(redValue, (int) greenValue, blueValue, coolValue, warmValue, colorBrightness, whiteBrightness, WRITE_PERIOD);
+            long millis;
+            do {
+                millis = System.currentTimeMillis();
+                setColorBrightnessBlocking(colorBrightness, 0);
+                setGreenBlocking((int)greenValue, millis + WRITE_PERIOD);
+
+                colorBrightness++;
+                greenValue += GREEN_STEP;
+            } while (!this.isCancelled() && colorBrightness < 0xFF);
+
+            do {
+                millis = System.currentTimeMillis();
+                setWhiteBrightnessBlocking(whiteBrightness, millis + WRITE_PERIOD);
+                whiteBrightness++;
+            } while (!this.isCancelled() && whiteBrightness < 0xFF);
+
+            do {
+                millis = System.currentTimeMillis();
+                setCoolBlocking(coolValue, millis + WRITE_PERIOD);
+                coolValue++;
+            } while (!this.isCancelled() && coolValue < 0xFF);
+
             return null;
         }
     }
